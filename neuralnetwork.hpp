@@ -11,8 +11,8 @@ private:
     // hiddenNeurons[i][j] = neuron j in ith hidden layer
     // neurons[0] = input layer
     // neurons[last] = output layer
-    std::vector<std::vector<Neuron>> neurons; // TODO maybe have here also input and output layers
-    std::vector<NeuronConnection> connections;
+    std::vector<std::vector<Neuron*>> neurons; // TODO maybe have here also input and output layers
+    std::vector<NeuronConnection*> connections;
     std::vector<double> input;
 
     /** backpropagation stuff **/
@@ -23,13 +23,20 @@ private:
     void backpropagate(const std::vector<double> &expectedOutput);
     void computeWeightUpdates();
 public:
+    NeuralNetwork() = delete;
     NeuralNetwork(//unsigned int numOfHiddenLayers, 
                   std::vector<unsigned int> sizeOfLayers, 
-                  std::function<double(double)> &activationFunction,
-                  std::function<double(double)> &activationFunctionDerivation
+                  std::function<double(double)> &hiddenActivationFunction,
+                  std::function<double(double)> &hiddenActivationFunctionDerivation,
+                  std::function<double(double)> &outputActivationFunction,
+                  std::function<double(double)> &outputActivationFunctionDerivation
                   );
+    ~NeuralNetwork();
     // TODO constructors setting parameters + add parameters?
-    void train(const std::vector<std::vector<double>> &trainingVectors, const std::vector<std::vector<double>> &trainingOutput);
+    void train(const std::vector<std::vector<double>> &trainingVectors, 
+               const std::vector<std::vector<double>> &trainingOutput,
+               unsigned int minibatchSize,
+               double learningRate);
     void setInput(const std::vector<double> &inputVector);
     void run();
     std::vector<double> getOutputVector();

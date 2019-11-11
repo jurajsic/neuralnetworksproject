@@ -1,7 +1,8 @@
 #include "neuron.hpp"
 
 Neuron::Neuron(const std::function<double(double)> &activationFunction, 
-               const std::function<double(double)> &activationFunctionDerivation)
+               const std::function<double(double)> &activationFunctionDerivation,
+               std::string id) : id(id)
 {
     setActivationFunction(activationFunction);
     setActivationFunctionDerivation(activationFunctionDerivation);
@@ -26,11 +27,12 @@ void Neuron::computeInnerPotential() {
         return;
     }*/
 
-    innerPotential = bias;
+    //innerPotential = bias;
     /*for (std::size_t i = 0; i != inputNeurons.size(); ++i) {
         innerPotential += weights[i] * inputNeurons[i]->getOutput();
     }*/
 
+    innerPotential = 0;
     for (NeuronConnection *inputConnection : inputConnections) {
         innerPotential += inputConnection->getWeight() * inputConnection->getInputNeuron()->getOutput();
     }
@@ -66,4 +68,8 @@ void Neuron::computeErrorFunctionOutputDerivation(double expectedOutput) {
             errorFunctionOutputDerivation += errorFunDer * activFunDer * outputConnection->getWeight();
         }
     }
+}
+
+std::ostream &operator<<(std::ostream &os, Neuron const &n) { 
+    return os << n.id;
 }

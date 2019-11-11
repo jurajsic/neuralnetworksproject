@@ -28,8 +28,11 @@ public:
 class Neuron {
 private:
     friend class NeuronConnection;
+    // id of neuron used for debuging
+    std::string id;
+    friend std::ostream& operator<<(std::ostream&, Neuron const&);
 
-    double bias = 0;
+    //double bias = 0;
     // input neurons with their weights
    /* std::vector<Neuron*> inputNeurons; // TODO decide if keeping as pair or two vectors
     std::vector<double> weights;
@@ -52,7 +55,8 @@ private:
     void computeInnerPotential();
 public:
     Neuron(const std::function<double(double)> &activationFunction, 
-           const std::function<double(double)> &activationFunctionDerivation);
+           const std::function<double(double)> &activationFunctionDerivation,
+           std::string id);
 
     void addInputConnection(NeuronConnection *inputConnection);
     void addOuptutConnection(NeuronConnection *outputConnection);

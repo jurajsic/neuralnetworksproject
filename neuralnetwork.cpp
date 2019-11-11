@@ -1,44 +1,62 @@
+#include <numeric>
+#include <random>
+#include <iostream>
 #include "neuralnetwork.hpp"
 
 /*
 TODO
     - initial weigths - constant or based on some logic
     - learning rate - constant or add variable based on current iteration
-    - minibatch - implement random choice of training vectors in each iteration + what size
     - mean sqared error ???
 */
 
 NeuralNetwork::NeuralNetwork(//unsigned int numOfHiddenLayers, 
                   std::vector<unsigned int> sizeOfLayers, 
-                  std::function<double(double)> &activationFunction,
-                  std::function<double(double)> &activationFunctionDerivation
-                  // TODO default weigth
+                  std::function<double(double)> &hiddenActivationFunction,
+                  std::function<double(double)> &hiddenActivationFunctionDerivation,
+                  std::function<double(double)> &outputActivationFunction,
+                  std::function<double(double)> &outputActivationFunctionDerivation
+                  // TODO default weight
                   // TODO learning rate
                   ) : input(sizeOfLayers[0])
 {
+    neurons.reserve(sizeOfLayers.size());
     // create input neurons
-    std::vector<Neuron> inputLayerNeurons;
-    auto zeroFunction = [](double) -> double { return 0; };
+    std::vector<Neuron*> inputLayerNeurons;
+    auto oneFunction = [](double) -> double { return 1; };
+    Neuron *formalNeuron = Neuron(oneFunction,oneFunction,"formalNeuron"); // formal input neuron for bias
+    inputLayerNeurons.push_back(); // formal input neuron for bias
+    
     for (unsigned int i = 0; i != sizeOfLayers[0]; ++i) {
         auto inputActivationFun = [&, i](double) -> double { return input[i]; };
-        inputLayerNeurons.push_back(Neuron(inputActivationFun, zeroFunction));
+        inputLayerNeurons.push_back(Neuron(inputActivationFun, oneFunction, "inputNeuron" + std::to_string(i)));
     }
     neurons.push_back(inputLayerNeurons);
 
     // create hidden + output neurons and connect them with lower layer
     for (std::size_t i = 1; i != sizeOfLayers.size(); ++i) {
-        auto newLayer = std::vector<Neuron>(sizeOfLayers[i], Neuron(activationFunction, activationFunctionDerivation));
+        auto newLayer = (i == sizeOfLayers.size()-1) ?
+                            std::vector<Neuron>(sizeOfLayers[i], Neuron(outputActivationFunction, outputActivationFunctionDerivation, "outputNeuron")) :
+                            std::vector<Neuron>(sizeOfLayers[i], Neuron(hiddenActivationFunction, hiddenActivationFunctionDerivation, "hiddenNeuronLayer" + std::to_string(i)));
         for (Neuron &newNeuron : newLayer) {
             for (Neuron &lowerLayerNeuron : neurons[i-1]) {
-                NeuronConnection connection(&lowerLayerNeuron, 0, &newNeuron); // TODO default weight?????
+                NeuronConnection connection(&lowerLayerNeuron, 0.1, &newNeuron); // TODO default weight?????
                 connections.push_back(connection);
             }
+            // create connection to also fromal neuron for bias (but not for the first hidden layer because it was already done)
+            if (i != 1) {
+                NeuronConnection biasConnection(formalNeuron, 0.1, &newNeuron); // TODO default weight
+                connections.push_back(biasConnection);
+            }
         }
+        neurons[i] = newLayer;
     }
 }
 
 void NeuralNetwork::setInput(const std::vector<double> &inputVector) {
-    input = inputVector;
+    for (std::size_t i = 0; i != input.size(); ++i) {
+        input[i] = inputVector[i];
+    }
     /*
     auto &inputNeurons = neurons[0];
     for (std::size_t i = 0; i != inputNeurons.size(); ++i) {
@@ -53,7 +71,10 @@ void NeuralNetwork::setInput(const std::vector<double> &inputVector) {
 void NeuralNetwork::run() {
     for (auto &layer : neurons) {
         for (auto &neuron : layer) {
+            std::cout << "ID: " << neuron << std::endl;
+            std::cout << neuron.getOutput() << std::endl;
             neuron.computeOutput();
+            std::cout << neuron.getOutput() << std::endl;
         }
     }
 }
@@ -73,7 +94,7 @@ void NeuralNetwork::backpropagate(const std::vector<double> &expectedOutput) {
     for (std::size_t i = 0; i != expectedOutput.size(); ++i) {
         outputLayer[i].computeErrorFunctionOutputDerivation(expectedOutput[i]);
     }
-    
+
     // backpropagate for hidden layers
     for (auto layer = neurons.rbegin() + 1; layer != (neurons.rend() - 1); ++layer) {
         for (auto &neuron : *layer) {
@@ -89,18 +110,33 @@ void NeuralNetwork::computeWeightUpdates() {
 }
 
 void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVectors, 
-                          const std::vector<std::vector<double>> &trainingOutput) {
-    // TODO add this whole thing in while block where we decide how long to do this shit
-    std::vector<std::size_t> trainingExamplesIndices; // TODO get some random
-    for (auto index : trainingExamplesIndices) {
-        setInput(trainingVectors[index]);
-        run();
-        backpropagate(trainingOutput[index]);
-        computeWeightUpdates();
-    }
+                          const std::vector<std::vector<double>> &trainingOutput,
+                          unsigned int minibatchSize,
+                          double learningRate) 
+{
+    // initialize a vector of indexes from 0 to trainingVectors.size()-1
+    std::vector<std::size_t> indexes(trainingVectors.size());
+    std::iota(std::begin(indexes), std::end(indexes), 0);
+    // stuff for randomization
+    std::random_device rd;
+    std::mt19937 g(rd());
 
-    double learningRate; // TODO decide what learning rate
-    for (NeuronConnection &connection : connections) {
-        connection.updateWeight(learningRate);
+    // TODO add this whole thing in while block where we decide how long to do this shit
+    for(int i=0; i != 1000; ++i) {
+        std::cout << "Iteration: " << i << std::endl;
+        // shuffle the indexes...
+        std::shuffle(indexes.begin(), indexes.end(), g);
+        // ... and take first minibatchSize of them for processing
+        for (std::size_t i = 0; i != minibatchSize; ++i) {
+            auto index = indexes[i];
+            setInput(trainingVectors[index]);
+            run();
+            backpropagate(trainingOutput[index]);
+            computeWeightUpdates();
+        }
+
+        for (NeuronConnection &connection : connections) {
+            connection.updateWeight(learningRate);
+        }
     }
 }
