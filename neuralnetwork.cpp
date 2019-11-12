@@ -15,10 +15,11 @@ NeuralNetwork::NeuralNetwork(//unsigned int numOfHiddenLayers,
                   std::function<double(double)> &hiddenActivationFunction,
                   std::function<double(double)> &hiddenActivationFunctionDerivation,
                   std::function<double(double)> &outputActivationFunction,
-                  std::function<double(double)> &outputActivationFunctionDerivation
-                  // TODO default weight
+                  std::function<double(double)> &outputActivationFunctionDerivation,
+                  std::pair<double,double> weightRange,
+                  ErrorFunction ef
                   // TODO learning rate
-                  ) : input(sizeOfLayers[0])
+                  ) : input(sizeOfLayers[0]), ef(ef)
 {
     neurons.reserve(sizeOfLayers.size());
     // create input neurons
@@ -34,6 +35,11 @@ NeuralNetwork::NeuralNetwork(//unsigned int numOfHiddenLayers,
     }
     neurons.push_back(inputLayerNeurons);
 
+    // randomizer for weights
+    std::random_device rd;  //Will be used to obtain a seed for the random number engine
+    std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<> randomWeight(weightRange.first, weightRange.second);
+
     // create hidden + output neurons and connect them with lower layer
     for (std::size_t i = 1; i != sizeOfLayers.size(); ++i) {
         std::vector<Neuron*> newLayer;
@@ -47,18 +53,30 @@ NeuralNetwork::NeuralNetwork(//unsigned int numOfHiddenLayers,
             newLayer.push_back(newNeuron);
 
             for (Neuron *lowerLayerNeuron : neurons[i-1]) {
-                NeuronConnection *connection = new NeuronConnection(lowerLayerNeuron, 0.1, newNeuron); // TODO default weight
+                NeuronConnection *connection = new NeuronConnection(lowerLayerNeuron, randomWeight(gen), newNeuron);
                 connections.push_back(connection);
             }
 
-            // create connection to also fromal neuron for bias (but not for the first hidden layer because it was already done)
+            // create connection to also formal neuron for bias (but not for the first hidden layer because it was already done)
             if (i != 1) {
-                NeuronConnection *biasConnection = new NeuronConnection(formalNeuron, 0.1, newNeuron); // TODO default weight
+                NeuronConnection *biasConnection = new NeuronConnection(formalNeuron, randomWeight(gen), newNeuron);
                 connections.push_back(biasConnection);
             }
         }
         neurons.push_back(newLayer);
     }
+
+/*
+    int i = 0;
+    for (auto l : neurons) {
+        std::cout << "layer: " << i << std::endl;
+        for (auto n : l) {
+            std::cout << *n << ' ';
+        }
+        std::cout << std::endl;
+        ++i;
+    }
+    */
 }
 
 NeuralNetwork::~NeuralNetwork() {
@@ -90,10 +108,10 @@ void NeuralNetwork::setInput(const std::vector<double> &inputVector) {
 void NeuralNetwork::run() {
     for (auto &layer : neurons) {
         for (Neuron *neuron : layer) {
-            std::cout << "ID: " << *neuron << std::endl;
-            std::cout << neuron->getOutput() << std::endl;
+            //std::cout << "ID: " << *neuron << std::endl;
+            //std::cout << "starting value: " << neuron->getOutput() << std::endl;
             neuron->computeOutput();
-            std::cout << neuron->getOutput() << std::endl;
+            //std::cout << neuron->getOutput() << std::endl;
         }
     }
 }
@@ -111,7 +129,7 @@ void NeuralNetwork::backpropagate(const std::vector<double> &expectedOutput) {
     // initialize derivatives for output layer
     auto outputLayer = neurons.back();
     for (std::size_t i = 0; i != expectedOutput.size(); ++i) {
-        outputLayer[i]->computeErrorFunctionOutputDerivation(expectedOutput[i]);
+        outputLayer[i]->computeErrorFunctionOutputDerivation(expectedOutput[i], ef);
     }
 
     // backpropagate for hidden layers
@@ -141,8 +159,9 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
     std::mt19937 g(rd());
 
     // TODO add this whole thing in while block where we decide how long to do this shit
-    for(int i=0; i != 1000; ++i) {
-        std::cout << "Iteration: " << i << std::endl;
+    for(int i=0; i != 10000; ++i) {
+        //double error = computeError(trainingVectors, trainingOutput);
+        std::cout << "Iteration " << i << std::endl;// " with error " << error << std::endl;
         // shuffle the indexes...
         std::shuffle(indexes.begin(), indexes.end(), g);
         // ... and take first minibatchSize of them for processing
@@ -150,12 +169,45 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
             auto index = indexes[i];
             setInput(trainingVectors[index]);
             run();
+            printOutput();
             backpropagate(trainingOutput[index]);
             computeWeightUpdates();
         }
 
         for (NeuronConnection *connection : connections) {
-            connection->updateWeight(learningRate);
+            connection->updateWeight(learningRate, ef);
         }
     }
+}
+
+void NeuralNetwork::printOutput() {
+    for (double o : getOutputVector()) {
+        std::cout << o << ' ';
+    }
+    std::cout << std::endl;
+}
+
+double NeuralNetwork::computeError(const std::vector<std::vector<double>> &trainingVectors, 
+                                   const std::vector<std::vector<double>> &expectedOutput)
+{
+    double error = 0;
+    for (std::size_t i = 0; i != trainingVectors.size(); ++i) {
+        double sizeOfSet = trainingVectors.size();
+        setInput(trainingVectors[i]);
+        run();
+        auto output = getOutputVector();
+        for (std::size_t j = 0; j != expectedOutput[i].size(); ++j) {
+            double realOutput = output[j];
+            double expectOutput = expectedOutput[i][j];
+            if (ef == squaredError) {
+                double temp = realOutput - expectOutput;
+                error +=  temp * temp / 2.0;
+            } else if (ef == crossEntropyBinary) {
+                error -= (expectOutput*log(realOutput) + (1-expectOutput)*log(1-realOutput)) / sizeOfSet;
+            } else {
+                throw "not implemented";
+            }
+        }
+    }
+    return error;
 }

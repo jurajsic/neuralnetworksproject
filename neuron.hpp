@@ -4,6 +4,8 @@
 #include <vector>
 #include <functional>
 
+enum ErrorFunction { squaredError, crossEntropy, crossEntropyBinary };
+
 class Neuron;
 
 class NeuronConnection {
@@ -13,6 +15,7 @@ private:
     Neuron *outputNeuron;
 
     double weightUpdate = 0;
+    unsigned weightUpdateCounter = 0;
 public:
     NeuronConnection() = delete;
     NeuronConnection(Neuron *input, double weight, Neuron *output);
@@ -22,7 +25,7 @@ public:
     Neuron* getOutputNeuron();
 
     void computeErrorFunWeightDerAndSave();
-    void updateWeight(double learningRate);
+    void updateWeight(double learningRate, ErrorFunction ef = squaredError);
 };
 
 class Neuron {
@@ -68,7 +71,7 @@ public:
     void setActivationFunctionDerivation(const std::function<double(double)> &activationFunctionDerivation);
 
     // for backpropagation
-    void computeErrorFunctionOutputDerivation(double expectedOutput = 0);
+    void computeErrorFunctionOutputDerivation(double expectedOutput = 0, ErrorFunction ef = squaredError);
     //void computeErrorFunctionWeightsDerivation(); // should add to errorFunctionWeightsDerivation not replace
     //void updateWeights(double learningRate); // should zero errorFunctionWeightsDerivation
     //double getErrorFunctionDerivation();

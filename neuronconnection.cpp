@@ -1,3 +1,4 @@
+#include <iostream>
 #include "neuron.hpp"
 
 NeuronConnection::NeuronConnection(Neuron *input, double weight, Neuron *output) 
@@ -27,9 +28,21 @@ void NeuronConnection::computeErrorFunWeightDerAndSave() {
     weightUpdate += outputNeuron->errorFunctionOutputDerivation
                         * outputNeuron->activationFunctionDerivation(outputNeuron->innerPotential)
                         * inputNeuron->getOutput();
+    ++weightUpdateCounter;
 }
 
-void NeuronConnection::updateWeight(double learningRate) {
+void NeuronConnection::updateWeight(double learningRate, ErrorFunction ef) {
+    if (ef == squaredError) {
+        // do nothing
+    } else if (ef == crossEntropyBinary) {
+        weightUpdate = -weightUpdate/weightUpdateCounter;
+    } else {
+        throw "Not implemented";
+    }
+
+    //std::cout << "Updating connection from " << *inputNeuron << " to " << *outputNeuron << " with weight " << weight << " by adding " << weightUpdate << " to it." << std::endl;
     weight += -learningRate * weightUpdate;
+
     weightUpdate = 0;
+    weightUpdateCounter = 0;
 }

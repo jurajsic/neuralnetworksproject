@@ -15,6 +15,8 @@ private:
     std::vector<NeuronConnection*> connections;
     std::vector<double> input;
 
+    ErrorFunction ef = squaredError;
+
     /** backpropagation stuff **/
     /*std::vector<std::vector<double>> outputNeuronsDerivatives;
     // derivatives[i][j] = partial derivative of error function with respect to neuron j in layer i 
@@ -22,6 +24,7 @@ private:
     
     void backpropagate(const std::vector<double> &expectedOutput);
     void computeWeightUpdates();
+    void printOutput();
 public:
     NeuralNetwork() = delete;
     NeuralNetwork(//unsigned int numOfHiddenLayers, 
@@ -29,7 +32,9 @@ public:
                   std::function<double(double)> &hiddenActivationFunction,
                   std::function<double(double)> &hiddenActivationFunctionDerivation,
                   std::function<double(double)> &outputActivationFunction,
-                  std::function<double(double)> &outputActivationFunctionDerivation
+                  std::function<double(double)> &outputActivationFunctionDerivation,
+                  std::pair<double,double> weightRange,
+                  ErrorFunction ef
                   );
     ~NeuralNetwork();
     // TODO constructors setting parameters + add parameters?
@@ -40,6 +45,8 @@ public:
     void setInput(const std::vector<double> &inputVector);
     void run();
     std::vector<double> getOutputVector();
+    double computeError(const std::vector<std::vector<double>> &trainingVectors, 
+                        const std::vector<std::vector<double>> &expectedOutput);
 };
 
 #endif

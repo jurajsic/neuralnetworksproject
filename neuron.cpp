@@ -56,9 +56,15 @@ void Neuron::setActivationFunctionDerivation(const std::function<double(double)>
     this->activationFunctionDerivation = activationFunctionDerivation;
 }
 
-void Neuron::computeErrorFunctionOutputDerivation(double expectedOutput) {
+void Neuron::computeErrorFunctionOutputDerivation(double expectedOutput, ErrorFunction ef) {
     if (outputConnections.size() == 0) {
-        errorFunctionOutputDerivation = output - expectedOutput;
+        if (ef == squaredError) {
+            errorFunctionOutputDerivation = output - expectedOutput;
+        } else if (ef == crossEntropyBinary) {
+            errorFunctionOutputDerivation = expectedOutput/output - (1-expectedOutput)/(1-output);
+        } else {
+            throw "Not implemented";
+        }
     } else {
         errorFunctionOutputDerivation = 0;
         for (NeuronConnection *outputConnection : outputConnections) {
