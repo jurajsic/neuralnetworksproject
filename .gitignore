@@ -1,5 +1,6 @@
 nn
 .vscode/*
+data/*
 
 # Prerequisites
 *.d

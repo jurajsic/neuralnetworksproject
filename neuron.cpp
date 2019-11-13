@@ -1,4 +1,8 @@
+#include <cmath>
+#include <iostream>
 #include "neuron.hpp"
+
+Neuron::Neuron(std::string id) : id(id) {}
 
 Neuron::Neuron(const std::function<double(double)> &activationFunction, 
                const std::function<double(double)> &activationFunctionDerivation,
@@ -23,9 +27,9 @@ double Neuron::getOutput() {
 }
 
 void Neuron::computeInnerPotential() {
-    /*if (!needToRecomputeInnerPotential) {
+    if (!needToRecomputeInnerPotential) {
         return;
-    }*/
+    }
 
     //innerPotential = bias;
     /*for (std::size_t i = 0; i != inputNeurons.size(); ++i) {
@@ -37,15 +41,23 @@ void Neuron::computeInnerPotential() {
         innerPotential += inputConnection->getWeight() * inputConnection->getInputNeuron()->getOutput();
     }
 
-    //needToRecomputeInnerPotential = false;
+    needToRecomputeInnerPotential = false;
+}
+
+double Neuron::getInnerPotential() {
+    computeInnerPotential();
+    return innerPotential;
 }
 
 void Neuron::computeOutput() {
     computeInnerPotential();
+    double oldOutput = output;
     output = activationFunction(innerPotential);
-    /*for (Neuron *outputNeuron : outputNeurons) {
-        outputNeuron->needToRecomputeInnerPotential = true;
-    } */
+    if (oldOutput != output) {
+        for (NeuronConnection *outputConnection : outputConnections) {
+            outputConnection->getOutputNeuron()->needToRecomputeInnerPotential = true;
+        } 
+    }
 }
 
 void Neuron::setActivationFunction(const std::function<double(double)> &activationFunction) {
@@ -58,10 +70,12 @@ void Neuron::setActivationFunctionDerivation(const std::function<double(double)>
 
 void Neuron::computeErrorFunctionOutputDerivation(double expectedOutput, ErrorFunction ef) {
     if (outputConnections.size() == 0) {
-        if (ef == squaredError) {
+        if (ef == meanSquaredError) {
             errorFunctionOutputDerivation = output - expectedOutput;
         } else if (ef == crossEntropyBinary) {
             errorFunctionOutputDerivation = expectedOutput/output - (1-expectedOutput)/(1-output);
+        } else if (ef == crossEntropy) {
+            errorFunctionOutputDerivation = expectedOutput/output;
         } else {
             throw "Not implemented";
         }

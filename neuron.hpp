@@ -4,7 +4,7 @@
 #include <vector>
 #include <functional>
 
-enum ErrorFunction { squaredError, crossEntropy, crossEntropyBinary };
+enum ErrorFunction { meanSquaredError, crossEntropy, crossEntropyBinary };
 
 class Neuron;
 
@@ -16,6 +16,8 @@ private:
 
     double weightUpdate = 0;
     unsigned weightUpdateCounter = 0;
+    
+    friend std::ostream& operator<<(std::ostream&, NeuronConnection const&);
 public:
     NeuronConnection() = delete;
     NeuronConnection(Neuron *input, double weight, Neuron *output);
@@ -25,7 +27,7 @@ public:
     Neuron* getOutputNeuron();
 
     void computeErrorFunWeightDerAndSave();
-    void updateWeight(double learningRate, ErrorFunction ef = squaredError);
+    void updateWeight(double learningRate, ErrorFunction ef);
 };
 
 class Neuron {
@@ -54,15 +56,18 @@ private:
     //std::vector<double> errorFunctionWeightsDerivation;
 
     double innerPotential = 0;
-    //bool needToRecomputeInnerPotential = true; // TODO do I need this????
+    bool needToRecomputeInnerPotential = true; // TODO do I need this????
     void computeInnerPotential();
 public:
+    Neuron(std::string id);
     Neuron(const std::function<double(double)> &activationFunction, 
            const std::function<double(double)> &activationFunctionDerivation,
            std::string id);
 
     void addInputConnection(NeuronConnection *inputConnection);
     void addOuptutConnection(NeuronConnection *outputConnection);
+    
+    double getInnerPotential();
 
     double getOutput();
     void computeOutput();
@@ -71,7 +76,7 @@ public:
     void setActivationFunctionDerivation(const std::function<double(double)> &activationFunctionDerivation);
 
     // for backpropagation
-    void computeErrorFunctionOutputDerivation(double expectedOutput = 0, ErrorFunction ef = squaredError);
+    void computeErrorFunctionOutputDerivation(double expectedOutput = 0, ErrorFunction ef = meanSquaredError);
     //void computeErrorFunctionWeightsDerivation(); // should add to errorFunctionWeightsDerivation not replace
     //void updateWeights(double learningRate); // should zero errorFunctionWeightsDerivation
     //double getErrorFunctionDerivation();

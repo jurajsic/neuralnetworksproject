@@ -3,6 +3,8 @@
 
 #include "neuron.hpp"
 
+enum activationFunctionType { linear, logsigmoid, softmax };
+
 class NeuralNetwork {
 private:
     /** all neurons **/
@@ -15,7 +17,7 @@ private:
     std::vector<NeuronConnection*> connections;
     std::vector<double> input;
 
-    ErrorFunction ef = squaredError;
+    ErrorFunction ef;
 
     /** backpropagation stuff **/
     /*std::vector<std::vector<double>> outputNeuronsDerivatives;
@@ -24,15 +26,16 @@ private:
     
     void backpropagate(const std::vector<double> &expectedOutput);
     void computeWeightUpdates();
-    void printOutput();
 public:
     NeuralNetwork() = delete;
     NeuralNetwork(//unsigned int numOfHiddenLayers, 
-                  std::vector<unsigned int> sizeOfLayers, 
+                  std::vector<unsigned long> sizeOfLayers, 
+                  //activationFunctionType hiddenNeuronsActFunType,
+                  activationFunctionType outputNeuronsActFunType,  /*
                   std::function<double(double)> &hiddenActivationFunction,
                   std::function<double(double)> &hiddenActivationFunctionDerivation,
                   std::function<double(double)> &outputActivationFunction,
-                  std::function<double(double)> &outputActivationFunctionDerivation,
+                  std::function<double(double)> &outputActivationFunctionDerivation, */
                   std::pair<double,double> weightRange,
                   ErrorFunction ef
                   );
@@ -40,13 +43,16 @@ public:
     // TODO constructors setting parameters + add parameters?
     void train(const std::vector<std::vector<double>> &trainingVectors, 
                const std::vector<std::vector<double>> &trainingOutput,
-               unsigned int minibatchSize,
-               double learningRate);
+               unsigned long minibatchSize,
+               double learningRate,
+               unsigned numOfLoops);
     void setInput(const std::vector<double> &inputVector);
     void run();
     std::vector<double> getOutputVector();
     double computeError(const std::vector<std::vector<double>> &trainingVectors, 
                         const std::vector<std::vector<double>> &expectedOutput);
+    void printOutput();
+    void printConnections();
 };
 
 #endif

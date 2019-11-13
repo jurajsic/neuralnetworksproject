@@ -11,11 +11,14 @@ TODO
 */
 
 NeuralNetwork::NeuralNetwork(//unsigned int numOfHiddenLayers, 
-                  std::vector<unsigned int> sizeOfLayers, 
+                  std::vector<unsigned long> sizeOfLayers,
+                  //activationFunctionType hiddenNeuronsActFunType,
+                  activationFunctionType outputNeuronsActFunType,  /*
                   std::function<double(double)> &hiddenActivationFunction,
                   std::function<double(double)> &hiddenActivationFunctionDerivation,
                   std::function<double(double)> &outputActivationFunction,
                   std::function<double(double)> &outputActivationFunctionDerivation,
+                  */
                   std::pair<double,double> weightRange,
                   ErrorFunction ef
                   // TODO learning rate
@@ -24,32 +27,33 @@ NeuralNetwork::NeuralNetwork(//unsigned int numOfHiddenLayers,
     neurons.reserve(sizeOfLayers.size());
     // create input neurons
     std::vector<Neuron*> inputLayerNeurons;
+    inputLayerNeurons.reserve(sizeOfLayers[0] + 1);
     auto oneFunction = [](double) -> double { return 1; };
     Neuron *formalNeuron = new Neuron(oneFunction,oneFunction,"formalNeuron"); // formal input neuron for bias
     inputLayerNeurons.push_back(formalNeuron); // formal input neuron for bias
     
-    for (unsigned int i = 0; i != sizeOfLayers[0]; ++i) {
+    for (unsigned long i = 0; i != sizeOfLayers[0]; ++i) {
         auto inputActivationFun = [&, i](double) -> double { return input[i]; };
         Neuron *inputNeuron = new Neuron(inputActivationFun, oneFunction, "inputNeuron" + std::to_string(i));
         inputLayerNeurons.push_back(inputNeuron);
     }
     neurons.push_back(inputLayerNeurons);
 
+    // hidden neurons have RELU as activation function
+    std::function<double(double)> hiddenActivationFunction = [](double x) -> double { return (x < 0) ? 0.0 : x; };
+    std::function<double(double)> hiddenActivationFunctionDerivation = [](double x) -> double { return (x < 0) ? 0.0 : 1.0; };
+
+
     // randomizer for weights
     std::random_device rd;  //Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
     std::uniform_real_distribution<> randomWeight(weightRange.first, weightRange.second);
 
-    // create hidden + output neurons and connect them with lower layer
-    for (std::size_t i = 1; i != sizeOfLayers.size(); ++i) {
+    // create hidden neurons and connect them with lower layer
+    for (std::size_t i = 1; i != sizeOfLayers.size() - 1; ++i) {
         std::vector<Neuron*> newLayer;
-        for (unsigned int j = 0; j != sizeOfLayers[i]; ++j) {
-            Neuron *newNeuron;
-            if (i == (sizeOfLayers.size()-1)) {
-                newNeuron = new Neuron(outputActivationFunction, outputActivationFunctionDerivation, "outputNeuron" + std::to_string(j));
-            } else {
-                newNeuron = new Neuron(hiddenActivationFunction, hiddenActivationFunctionDerivation, "hiddenNeuron" + std::to_string(j) + "Layer" + std::to_string(i));
-            }
+        for (unsigned long j = 0; j != sizeOfLayers[i]; ++j) {
+            Neuron *newNeuron = new Neuron(hiddenActivationFunction, hiddenActivationFunctionDerivation, "hiddenNeuron" + std::to_string(j) + "Layer" + std::to_string(i));
             newLayer.push_back(newNeuron);
 
             for (Neuron *lowerLayerNeuron : neurons[i-1]) {
@@ -65,6 +69,62 @@ NeuralNetwork::NeuralNetwork(//unsigned int numOfHiddenLayers,
         }
         neurons.push_back(newLayer);
     }
+
+    // create output neurons
+    unsigned long numOfOutputNeurons = sizeOfLayers[sizeOfLayers.size() - 1];
+    std::vector<Neuron*> outputLayer;
+    for (unsigned long i = 0; i != numOfOutputNeurons; ++i) {
+        Neuron *newNeuron = new Neuron("outputNeuron" + std::to_string(i));
+        // connect them with lower layer
+        for (Neuron *lowerLayerNeuron : neurons.back()) {
+            NeuronConnection *connection = new NeuronConnection(lowerLayerNeuron, randomWeight(gen), newNeuron);
+            connections.push_back(connection);
+        }
+        // create connection to formal neuron (only if it was not connected in previous step)
+        if (neurons.size() != 1) { // there are more layers than input layer
+            NeuronConnection *biasConnection = new NeuronConnection(formalNeuron, randomWeight(gen), newNeuron);
+            connections.push_back(biasConnection);
+        }
+        outputLayer.push_back(newNeuron);
+    }
+    neurons.push_back(outputLayer);
+
+    // process activation functions for output neurons
+    std::function<double(double)> outputActivationFunction;
+    std::function<double(double)> outputActivationFunctionDerivation;
+    switch (outputNeuronsActFunType) {
+        case (linear):
+            outputActivationFunction = [](double x) -> double { return x; };
+            outputActivationFunctionDerivation = [](double) -> double { return 1; };
+            break;
+        case (logsigmoid):
+            outputActivationFunction = [](double x) -> double { return (1.0 / (1.0 + (std::exp(-x)))); };
+            outputActivationFunctionDerivation = [=](double x) -> double { return (outputActivationFunction(x)*(1-outputActivationFunction(x))); };
+            break;
+        case (softmax):
+            outputActivationFunction = [=](double x) -> double 
+                                        { 
+                                            double denominator = 0;
+                                            for (Neuron *outputNeuron : outputLayer) {
+                                                denominator += std::exp(outputNeuron->getInnerPotential());
+                                            }
+                                            return (std::exp(x) / denominator);
+                                        };
+            outputActivationFunctionDerivation = [=](double x) -> double
+                                        {
+                                            double softmaxOrig = outputActivationFunction(x);
+                                            return softmaxOrig * (1 - softmaxOrig);
+                                        };
+            break;
+        default:
+            throw "Not implemented";
+    }
+
+    for (Neuron *outputNeuron : outputLayer) {
+        outputNeuron->setActivationFunction(outputActivationFunction);
+        outputNeuron->setActivationFunctionDerivation(outputActivationFunctionDerivation);
+    }
+                
 
 /*
     int i = 0;
@@ -148,8 +208,9 @@ void NeuralNetwork::computeWeightUpdates() {
 
 void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVectors, 
                           const std::vector<std::vector<double>> &trainingOutput,
-                          unsigned int minibatchSize,
-                          double learningRate) 
+                          unsigned long minibatchSize,
+                          double learningRate,
+                          unsigned numOfLoops) 
 {
     // initialize a vector of indexes from 0 to trainingVectors.size()-1
     std::vector<std::size_t> indexes(trainingVectors.size());
@@ -159,17 +220,17 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
     std::mt19937 g(rd());
 
     // TODO add this whole thing in while block where we decide how long to do this shit
-    for(int i=0; i != 10000; ++i) {
+    for(unsigned i=0; i != numOfLoops; ++i) {
         //double error = computeError(trainingVectors, trainingOutput);
         std::cout << "Iteration " << i << std::endl;// " with error " << error << std::endl;
         // shuffle the indexes...
         std::shuffle(indexes.begin(), indexes.end(), g);
         // ... and take first minibatchSize of them for processing
-        for (std::size_t i = 0; i != minibatchSize; ++i) {
+        for (unsigned long i = 0; i != minibatchSize; ++i) {
             auto index = indexes[i];
             setInput(trainingVectors[index]);
             run();
-            printOutput();
+            //printOutput();
             backpropagate(trainingOutput[index]);
             computeWeightUpdates();
         }
@@ -199,9 +260,10 @@ double NeuralNetwork::computeError(const std::vector<std::vector<double>> &train
         for (std::size_t j = 0; j != expectedOutput[i].size(); ++j) {
             double realOutput = output[j];
             double expectOutput = expectedOutput[i][j];
-            if (ef == squaredError) {
+            if (ef == meanSquaredError) {
                 double temp = realOutput - expectOutput;
                 error +=  temp * temp / 2.0;
+                error = error / sizeOfSet;
             } else if (ef == crossEntropyBinary) {
                 error -= (expectOutput*log(realOutput) + (1-expectOutput)*log(1-realOutput)) / sizeOfSet;
             } else {
@@ -210,4 +272,10 @@ double NeuralNetwork::computeError(const std::vector<std::vector<double>> &train
         }
     }
     return error;
+}
+
+void NeuralNetwork::printConnections() {
+    for (NeuronConnection *c : connections) {
+        std::cout << *c << std::endl;
+    }
 }
