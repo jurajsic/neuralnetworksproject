@@ -18,6 +18,11 @@ private:
     std::vector<double> input;
 
     ErrorFunction ef;
+    activationFunctionType outputNeuronsActivationFunType;
+
+    // used if output layer has softmax as activation function
+    double *denominatorForSoftmax = nullptr;
+    void computeDenominatorForSoftmax();
 
     /** backpropagation stuff **/
     /*std::vector<std::vector<double>> outputNeuronsDerivatives;
@@ -45,7 +50,8 @@ public:
                const std::vector<std::vector<double>> &trainingOutput,
                unsigned long minibatchSize,
                double learningRate,
-               unsigned numOfLoops);
+               unsigned numOfLoops,
+               double weightDecay);
     void setInput(const std::vector<double> &inputVector);
     void run();
     std::vector<double> getOutputVector();

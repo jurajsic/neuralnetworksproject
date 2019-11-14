@@ -27,9 +27,9 @@ double Neuron::getOutput() {
 }
 
 void Neuron::computeInnerPotential() {
-    if (!needToRecomputeInnerPotential) {
-        return;
-    }
+    //if (!needToRecomputeInnerPotential) {
+    //    return;
+    //}
 
     //innerPotential = bias;
     /*for (std::size_t i = 0; i != inputNeurons.size(); ++i) {
@@ -41,23 +41,29 @@ void Neuron::computeInnerPotential() {
         innerPotential += inputConnection->getWeight() * inputConnection->getInputNeuron()->getOutput();
     }
 
-    needToRecomputeInnerPotential = false;
+    //needToRecomputeInnerPotential = false;
 }
 
 double Neuron::getInnerPotential() {
-    computeInnerPotential();
+    //computeInnerPotential();
     return innerPotential;
 }
 
 void Neuron::computeOutput() {
-    computeInnerPotential();
-    double oldOutput = output;
-    output = activationFunction(innerPotential);
-    if (oldOutput != output) {
+    //computeInnerPotential();
+    //double oldOutput = output;
+    // this is true only if we have softmax
+    if (expOfInnerPotential != -1.0) {
+        std::cout << "asdaw" << std::endl;
+        output = activationFunction(expOfInnerPotential);
+    } else {
+        output = activationFunction(innerPotential);
+    }
+    /*if (oldOutput != output) {
         for (NeuronConnection *outputConnection : outputConnections) {
             outputConnection->getOutputNeuron()->needToRecomputeInnerPotential = true;
         } 
-    }
+    }*/
 }
 
 void Neuron::setActivationFunction(const std::function<double(double)> &activationFunction) {
@@ -75,7 +81,10 @@ void Neuron::computeErrorFunctionOutputDerivation(double expectedOutput, ErrorFu
         } else if (ef == crossEntropyBinary) {
             errorFunctionOutputDerivation = expectedOutput/output - (1-expectedOutput)/(1-output);
         } else if (ef == crossEntropy) {
-            errorFunctionOutputDerivation = expectedOutput/output;
+            //errorFunctionOutputDerivation = expectedOutput/output;
+            // this is different than basic back propagation, it assumes that "derivation" of activation function
+            // is set to constant 1
+            errorFunctionOutputDerivation = expectedOutput - output; 
         } else {
             throw "Not implemented";
         }
@@ -88,6 +97,15 @@ void Neuron::computeErrorFunctionOutputDerivation(double expectedOutput, ErrorFu
             errorFunctionOutputDerivation += errorFunDer * activFunDer * outputConnection->getWeight();
         }
     }
+}
+
+// computing of exp uses idea from
+// https://stats.stackexchange.com/questions/304758/softmax-overflow 
+void Neuron::computeExpOfInnerPotential(double maxOutputLayerInnerPotential) {
+    expOfInnerPotential = std::exp(innerPotential - maxOutputLayerInnerPotential);
+}
+double Neuron::getExpOfInnerPotential() {
+    return expOfInnerPotential;
 }
 
 std::ostream &operator<<(std::ostream &os, Neuron const &n) { 

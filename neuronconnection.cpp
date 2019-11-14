@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <cmath>
 #include "neuron.hpp"
 
 NeuronConnection::NeuronConnection(Neuron *input, double weight, Neuron *output) 
@@ -17,9 +18,11 @@ double NeuronConnection::getWeight() {
     return weight;
 }
 
+/*
 void NeuronConnection::setWeight(double weight) {
     this->weight = weight;
 }
+*/
 
 Neuron* NeuronConnection::getOutputNeuron() {
     return outputNeuron;
@@ -32,7 +35,7 @@ void NeuronConnection::computeErrorFunWeightDerAndSave() {
     ++weightUpdateCounter;
 }
 
-void NeuronConnection::updateWeight(double learningRate, ErrorFunction ef) {
+void NeuronConnection::updateWeight(double learningRate, ErrorFunction ef, double weightDecay) {
     if (ef == meanSquaredError) {
         weightUpdate = weightUpdate/weightUpdateCounter;
     } else if (ef == crossEntropyBinary || ef == crossEntropy) {
@@ -43,7 +46,8 @@ void NeuronConnection::updateWeight(double learningRate, ErrorFunction ef) {
 
     //std::cout << "Updating connection from " << *inputNeuron << " to " << *outputNeuron << " with weight " << weight << " by adding " << weightUpdate << " to it." << std::endl;
     weight += -learningRate * weightUpdate;
-    outputNeuron->needToRecomputeInnerPotential = true;
+    weight = (1 - weightDecay) * weight;
+    //outputNeuron->needToRecomputeInnerPotential = true;
 
     weightUpdate = 0;
     weightUpdateCounter = 0;

@@ -23,11 +23,11 @@ public:
     NeuronConnection(Neuron *input, double weight, Neuron *output);
     Neuron* getInputNeuron();
     double getWeight();
-    void setWeight(double weight);
+    //void setWeight(double weight);
     Neuron* getOutputNeuron();
 
     void computeErrorFunWeightDerAndSave();
-    void updateWeight(double learningRate, ErrorFunction ef);
+    void updateWeight(double learningRate, ErrorFunction ef, double weightDecay = 0.0);
 };
 
 class Neuron {
@@ -37,27 +37,24 @@ private:
     std::string id;
     friend std::ostream& operator<<(std::ostream&, Neuron const&);
 
-    //double bias = 0;
-    // input neurons with their weights
-   /* std::vector<Neuron*> inputNeurons; // TODO decide if keeping as pair or two vectors
-    std::vector<double> weights;
-    std::vector<Neuron*> outputNeurons;*/
-
     std::vector<NeuronConnection*> inputConnections;
     std::vector<NeuronConnection*> outputConnections;
 
-    double output = 0;
+    double innerPotential = 0.0;
+
+    double output = 0.0;
     std::function<double(double)> activationFunction;
     std::function<double(double)> activationFunctionDerivation;
 
     /** backpropagation stuff **/
-    double errorFunctionOutputDerivation = 0;
-    // weight update for each weight
-    //std::vector<double> errorFunctionWeightsDerivation;
+    double errorFunctionOutputDerivation = 0.0;
+    
+    // this is only used if activation function is softmax, so we do not recompute exp multiple times
+    // it is not actually exp of inner potential but exp(innerPotential - maxOutputLayerInnerPotential)
+    // where maxOutputLayerInnerPotential is maximal inner potential of neuron in output layer
+    // so we do not have problems with too large numbers
+    double expOfInnerPotential = -1.0;
 
-    double innerPotential = 0;
-    bool needToRecomputeInnerPotential = true; // TODO do I need this????
-    void computeInnerPotential();
 public:
     Neuron(std::string id);
     Neuron(const std::function<double(double)> &activationFunction, 
@@ -67,10 +64,10 @@ public:
     void addInputConnection(NeuronConnection *inputConnection);
     void addOuptutConnection(NeuronConnection *outputConnection);
     
+    void computeInnerPotential();
     double getInnerPotential();
-
-    double getOutput();
     void computeOutput();
+    double getOutput();
     
     void setActivationFunction(const std::function<double(double)> &activationFunction);
     void setActivationFunctionDerivation(const std::function<double(double)> &activationFunctionDerivation);
@@ -80,6 +77,9 @@ public:
     //void computeErrorFunctionWeightsDerivation(); // should add to errorFunctionWeightsDerivation not replace
     //void updateWeights(double learningRate); // should zero errorFunctionWeightsDerivation
     //double getErrorFunctionDerivation();
+
+    void computeExpOfInnerPotential(double maxOutputLayerInnerPotential);
+    double getExpOfInnerPotential();
 };
 
 #endif
