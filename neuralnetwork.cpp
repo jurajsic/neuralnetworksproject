@@ -97,9 +97,9 @@ NeuralNetwork::NeuralNetwork(
             break;
         case (softmax):
             // assumes that x is not inner potential but exp(innerpotential)
-            outputActivationFunction = [=](double x) -> double 
+            outputActivationFunction = [&](double x) -> double 
                                         { 
-                                            return x / *denominatorForSoftmax;
+                                            return x / denominatorForSoftmax;
                                         };
             // this "derivation" is set to 1 so computation of partial derivation of error
             // function is easier
@@ -150,10 +150,10 @@ void NeuralNetwork::run() {
                 double innerPotential = outputNeuron->getInnerPotential();
                 maxInnerPotential = (innerPotential > maxInnerPotential) ? innerPotential : maxInnerPotential;                                           
             }
-            *denominatorForSoftmax = 0.0;
+            denominatorForSoftmax = 0.0;
             for (Neuron *outputNeuron : neurons.back()) {
                 outputNeuron->computeExpOfInnerPotential(maxInnerPotential);
-                *denominatorForSoftmax = *denominatorForSoftmax + outputNeuron->getExpOfInnerPotential();
+                denominatorForSoftmax += outputNeuron->getExpOfInnerPotential();
             }
         }
 

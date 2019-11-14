@@ -54,7 +54,6 @@ void Neuron::computeOutput() {
     //double oldOutput = output;
     // this is true only if we have softmax
     if (expOfInnerPotential != -1.0) {
-        std::cout << "asdaw" << std::endl;
         output = activationFunction(expOfInnerPotential);
     } else {
         output = activationFunction(innerPotential);

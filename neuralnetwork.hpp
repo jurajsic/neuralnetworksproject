@@ -21,7 +21,7 @@ private:
     activationFunctionType outputNeuronsActivationFunType;
 
     // used if output layer has softmax as activation function
-    double *denominatorForSoftmax = nullptr;
+    double denominatorForSoftmax;
     void computeDenominatorForSoftmax();
 
     /** backpropagation stuff **/
