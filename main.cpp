@@ -3,6 +3,7 @@
 #include <sstream>
 #include <cmath>
 #include <chrono>
+#include <algorithm>
 #include "neuralnetwork.hpp"
 
 void xorNN() {
