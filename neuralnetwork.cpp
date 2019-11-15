@@ -3,29 +3,24 @@
 #include <iostream>
 #include "neuralnetwork.hpp"
 
-/*
-TODO
-    - initial weigths - constant or based on some logic
-    - learning rate - constant or add variable based on current iteration
-    - mean sqared error ???
-*/
-
 NeuralNetwork::NeuralNetwork( 
                   std::vector<unsigned long> sizeOfLayers,
                   activationFunctionType outputNeuronsActFunType, 
-                  std::pair<double,double> weightRange,
+                  //std::pair<double,double> weightRange,
                   ErrorFunction ef
-                  // TODO learning rate
                   ) : input(sizeOfLayers[0]), ef(ef), outputNeuronsActivationFunType(outputNeuronsActFunType)
 {
-    neurons.reserve(sizeOfLayers.size());
+    //neurons.reserve(sizeOfLayers.size());
+
+    // create formal neuron for bias
+    auto oneFunction = [](double) -> double { return 1; };
+    formalNeuron = new Neuron(oneFunction,oneFunction,"formalNeuron");
+    formalNeuron->computeOutput();
+    //inputLayerNeurons.push_back(formalNeuron);
+    
     // create input neurons
     std::vector<Neuron*> inputLayerNeurons;
-    inputLayerNeurons.reserve(sizeOfLayers[0] + 1);
-    auto oneFunction = [](double) -> double { return 1; };
-    Neuron *formalNeuron = new Neuron(oneFunction,oneFunction,"formalNeuron"); // formal input neuron for bias
-    inputLayerNeurons.push_back(formalNeuron);
-    
+    //inputLayerNeurons.reserve(sizeOfLayers[0]);
     for (unsigned long i = 0; i != sizeOfLayers[0]; ++i) {
         auto inputActivationFun = [&, i](double) -> double { return input[i]; };
         Neuron *inputNeuron = new Neuron(inputActivationFun, oneFunction, "inputNeuron" + std::to_string(i));
@@ -41,45 +36,52 @@ NeuralNetwork::NeuralNetwork(
     // randomizer for weights
     std::random_device rd;  //Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
-    std::uniform_real_distribution<> randomWeight(weightRange.first, weightRange.second);
+    //std::uniform_real_distribution<> randomWeight(weightRange.first, weightRange.second);
 
     // create hidden neurons and connect them with lower layer
     for (std::size_t i = 1; i != sizeOfLayers.size() - 1; ++i) {
         std::vector<Neuron*> newLayer;
-        for (unsigned long j = 0; j != sizeOfLayers[i]; ++j) {
+        unsigned long numOfNeuronsInLayer = sizeOfLayers[i];
+        for (unsigned long j = 0; j != numOfNeuronsInLayer; ++j) {
             Neuron *newNeuron = new Neuron(hiddenActivationFunction, hiddenActivationFunctionDerivation, "hiddenNeuron" + std::to_string(j) + "Layer" + std::to_string(i));
             newLayer.push_back(newNeuron);
 
-            for (Neuron *lowerLayerNeuron : neurons[i-1]) {
+            // create connections to the lower layer of neurons
+            auto &lowerLayer = neurons.back();
+            // weight generated using results from He (2015) designed for RELU
+            std::normal_distribution randomWeight(0.0, 2.0/double(lowerLayer.size()));
+            for (Neuron *lowerLayerNeuron : lowerLayer) {
                 NeuronConnection *connection = new NeuronConnection(lowerLayerNeuron, randomWeight(gen), newNeuron);
                 connections.push_back(connection);
             }
 
-            // create connection to also formal neuron for bias (but not for the first hidden layer because it was already done)
-            if (i != 1) {
-                NeuronConnection *biasConnection = new NeuronConnection(formalNeuron, randomWeight(gen), newNeuron);
-                connections.push_back(biasConnection);
-            }
+            // create connection to formal neuron for bias
+            NeuronConnection *biasConnection = new NeuronConnection(formalNeuron, 0.0, newNeuron);
+            connections.push_back(biasConnection);
         }
         neurons.push_back(newLayer);
     }
 
     // create output neurons
-    unsigned long numOfOutputNeurons = sizeOfLayers[sizeOfLayers.size() - 1];
+    unsigned long numOfOutputNeurons = sizeOfLayers.back();
     std::vector<Neuron*> outputLayer;
     for (unsigned long i = 0; i != numOfOutputNeurons; ++i) {
         Neuron *newNeuron = new Neuron("outputNeuron" + std::to_string(i));
+        outputLayer.push_back(newNeuron);
+
         // connect them with lower layer
-        for (Neuron *lowerLayerNeuron : neurons.back()) {
+        auto &lowerLayer = neurons.back();
+        // weight generated using results from Glorot & Bengio (2010)
+        std::normal_distribution randomWeight(0.0, 2.0/double(lowerLayer.size() + numOfOutputNeurons));
+        for (Neuron *lowerLayerNeuron : lowerLayer) {
             NeuronConnection *connection = new NeuronConnection(lowerLayerNeuron, randomWeight(gen), newNeuron);
             connections.push_back(connection);
         }
-        // create connection to formal neuron (only if it was not connected in previous step)
-        if (neurons.size() != 1) { // = if there are more layers than input layer
-            NeuronConnection *biasConnection = new NeuronConnection(formalNeuron, randomWeight(gen), newNeuron);
-            connections.push_back(biasConnection);
-        }
-        outputLayer.push_back(newNeuron);
+
+        // create connection to formal neuron
+        NeuronConnection *biasConnection = new NeuronConnection(formalNeuron, 0.0, newNeuron);
+        connections.push_back(biasConnection);
+
     }
     neurons.push_back(outputLayer);
 
@@ -121,6 +123,7 @@ NeuralNetwork::NeuralNetwork(
 }
 
 NeuralNetwork::~NeuralNetwork() {
+    delete formalNeuron;
     for (auto &layer : neurons) {
         for (Neuron *neuronToDelete : layer) {
             delete neuronToDelete;

@@ -1,16 +1,16 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -pedantic -Wall -Wextra
-OPTIM = -o3
-DEBUG = -g
+DEBOPT = -o3
 RM = rm -f
 
 SRCS = neuron.cpp neuronconnection.cpp neuralnetwork.cpp main.cpp 
 OBJS = $(subst .cpp,.o,$(SRCS))
 
+all: CXXFLAGS += -o3
 all: nn
 
-debug: $(OBJS)
-	$(CXX) $(CXXFLAGS) $(DEBUG) -o nn $(OBJS)
+debug: CXXFLAGS += -g
+debug: nn
 
 main.o: main.cpp
 
@@ -21,7 +21,7 @@ neuronconnection.o: neuron.hpp neuronconnection.cpp
 neuralnetwork.o: neuralnetwork.hpp neuralnetwork.cpp
 
 nn: $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OPTIM) -o nn $(OBJS)
+	$(CXX) $(CXXFLAGS) -o nn $(OBJS)
 
 clean:
 	$(RM) $(OBJS)

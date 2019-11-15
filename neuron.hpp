@@ -14,8 +14,10 @@ private:
     double weight;
     Neuron *outputNeuron;
 
-    double weightUpdate = 0;
-    unsigned weightUpdateCounter = 0;
+    double weightUpdate = 0.0;
+    unsigned weightUpdateCounter = 0.0;
+
+    double learningRateAdaptation = 1.0;
     
     friend std::ostream& operator<<(std::ostream&, NeuronConnection const&);
 public:
@@ -23,7 +25,6 @@ public:
     NeuronConnection(Neuron *input, double weight, Neuron *output);
     Neuron* getInputNeuron();
     double getWeight();
-    //void setWeight(double weight);
     Neuron* getOutputNeuron();
 
     void computeErrorFunWeightDerAndSave();
@@ -33,6 +34,7 @@ public:
 class Neuron {
 private:
     friend class NeuronConnection;
+
     // id of neuron used for debuging
     std::string id;
     friend std::ostream& operator<<(std::ostream&, Neuron const&);
@@ -41,8 +43,8 @@ private:
     std::vector<NeuronConnection*> outputConnections;
 
     double innerPotential = 0.0;
-
     double output = 0.0;
+
     std::function<double(double)> activationFunction;
     std::function<double(double)> activationFunctionDerivation;
 
@@ -66,6 +68,8 @@ public:
     
     void computeInnerPotential();
     double getInnerPotential();
+
+    // computation of output uses last computed inner potential
     void computeOutput();
     double getOutput();
     
@@ -74,9 +78,6 @@ public:
 
     // for backpropagation
     void computeErrorFunctionOutputDerivation(double expectedOutput = 0, ErrorFunction ef = meanSquaredError);
-    //void computeErrorFunctionWeightsDerivation(); // should add to errorFunctionWeightsDerivation not replace
-    //void updateWeights(double learningRate); // should zero errorFunctionWeightsDerivation
-    //double getErrorFunctionDerivation();
 
     void computeExpOfInnerPotential(double maxOutputLayerInnerPotential);
     double getExpOfInnerPotential();

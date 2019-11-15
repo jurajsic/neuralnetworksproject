@@ -18,12 +18,6 @@ double NeuronConnection::getWeight() {
     return weight;
 }
 
-/*
-void NeuronConnection::setWeight(double weight) {
-    this->weight = weight;
-}
-*/
-
 Neuron* NeuronConnection::getOutputNeuron() {
     return outputNeuron;
 }
@@ -44,11 +38,19 @@ void NeuronConnection::updateWeight(double learningRate, ErrorFunction ef, doubl
         throw "Not implemented";
     }
 
-    //std::cout << "Updating connection from " << *inputNeuron << " to " << *outputNeuron << " with weight " << weight << " by adding " << weightUpdate << " to it." << std::endl;
-    weight += -learningRate * weightUpdate;
-    weight = (1 - weightDecay) * weight;
-    //outputNeuron->needToRecomputeInnerPotential = true;
+    //rmsdrop
+    double smoothingTerm = 0.9;
+    learningRateAdaptation = smoothingTerm*learningRateAdaptation + (1-smoothingTerm)*weightUpdate*weightUpdate;
 
+    // SGD computing learning rate
+    //weight += -learningRate * weightUpdate;
+
+    // rmsdrop computing learning rate
+    weight += -learningRate * weightUpdate / std::sqrt(learningRateAdaptation + 1e-8);
+
+    // weight decay
+    weight = (1 - weightDecay) * weight;
+    
     weightUpdate = 0;
     weightUpdateCounter = 0;
 }

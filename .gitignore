@@ -1,6 +1,7 @@
 nn
 .vscode/*
 data/*
+labels/*
 
 # Prerequisites
 *.d
