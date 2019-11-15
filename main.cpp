@@ -53,7 +53,8 @@ std::vector<std::vector<double>> readVectorFile(std::string fileName) {
             double cell;
             std::vector<double> row;
             while (divider >> cell) {
-                row.push_back(cell);
+                // input is divided by 255 to get values from 0 to 1
+                row.push_back(cell/255.0);
             }
             content.push_back(row);
         }
@@ -82,7 +83,7 @@ std::vector<unsigned> readLabelFile(std::string fileName) {
 
 int main(int argc, char **argv) {
 
-    if (argc < 4)
+    if (argc < 5)
     {
         xorNN();
         return 0;
@@ -107,24 +108,28 @@ int main(int argc, char **argv) {
         outputs.push_back(output);
     }
 
-    std::vector<unsigned long> sizeOfLayers = {vectors[0].size(), std::stoul(argv[1]), maxLabel + 1};
+    std::vector<unsigned long> sizeOfLayers;
+    sizeOfLayers.push_back(vectors[0].size());
+    for (int i = 1; i < argc-3; ++i)
+        sizeOfLayers.push_back(std::stoul(argv[1]));
+    sizeOfLayers.push_back(maxLabel + 1);
 
     std::cout << "Creating neural network" << std::endl;
   
     auto t_start = std::chrono::high_resolution_clock::now();
 
-    double learnRate = 0.001; 
+    double learnRate = std::stod(argv[argc-3]);
     NeuralNetwork nn(sizeOfLayers, softmax, crossEntropy);
     //NeuralNetwork nn(sizeOfLayers, linear, std::pair<double,double>(-1,1), meanSquaredError);
-    nn.train(vectors, outputs, 32, learnRate, std::stoul(argv[2]), 0.00005);
+    nn.train(vectors, outputs, 32, learnRate, std::stoul(argv[argc-2]), 0.00005, 1000);
 
     auto t_end = std::chrono::high_resolution_clock::now();
 
     double elapsed_time_m = std::chrono::duration<double, std::ratio<60>>(t_end-t_start).count();
-    std::cout << "Time taken to train: " << elapsed_time_m << std::endl;
+    std::cout << "Time taken to train: " << elapsed_time_m << " minutes" << std::endl;
  
     vectors = readVectorFile("data/MNIST_DATA/mnist_test_vectors.csv");
-    std::ofstream outFile(argv[3]);
+    std::ofstream outFile(argv[argc-1]);
     for (auto &v : vectors) {
         nn.setInput(v);
         nn.run();

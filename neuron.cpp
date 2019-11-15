@@ -13,14 +13,14 @@ Neuron::Neuron(const std::function<double(double)> &activationFunction,
 }
 
 void Neuron::addInputConnection(NeuronConnection *inputConnection) {
-    if (inputConnection->getOutputNeuron != this) {
+    if (inputConnection->getOutputNeuron() != this) {
         throw "Wrong connection";
     }
     inputConnections.push_back(inputConnection);
 }
 
 void Neuron::addOuptutConnection(NeuronConnection *outputConnection) {
-    if (outputConnection->getInputNeuron != this) {
+    if (outputConnection->getInputNeuron() != this) {
         throw "Wrong connection";
     }
     outputConnections.push_back(outputConnection);

@@ -1,6 +1,8 @@
 #include <numeric>
 #include <random>
 #include <iostream>
+#include <algorithm>
+#include <iterator>
 #include "neuralnetwork.hpp"
 
 NeuralNetwork::NeuralNetwork( 
@@ -28,9 +30,14 @@ NeuralNetwork::NeuralNetwork(
     }
     neurons.push_back(inputLayerNeurons);
 
+/*
     // hidden neurons have RELU as activation function
     std::function<double(double)> hiddenActivationFunction = [](double x) -> double { return (x < 0) ? 0.0 : x; };
     std::function<double(double)> hiddenActivationFunctionDerivation = [](double x) -> double { return (x < 0) ? 0.0 : 1.0; };
+*/
+    // hidden neurons have SELU as activation function
+    std::function<double(double)> hiddenActivationFunction = [](double x) -> double { return (x < 0.0) ? (1.05*1.673*(std::exp(x)-1)) : 1.05*x; };
+    std::function<double(double)> hiddenActivationFunctionDerivation = [](double x) -> double { return (x < 0.0) ? (1.05*1.673*std::exp(x)) : 1.05; };
 
 
     // randomizer for weights
@@ -49,7 +56,9 @@ NeuralNetwork::NeuralNetwork(
             // create connections to the lower layer of neurons
             auto &lowerLayer = neurons.back();
             // weight generated using results from He (2015) designed for RELU
-            std::normal_distribution randomWeight(0.0, 2.0/double(lowerLayer.size()));
+            //std::normal_distribution randomWeight(0.0, 2.0/double(lowerLayer.size()));
+            // weight generated using results from LeCun (1990) designed for SELU
+            std::normal_distribution randomWeight(0.0, 1.0/double(lowerLayer.size()));
             for (Neuron *lowerLayerNeuron : lowerLayer) {
                 NeuronConnection *connection = new NeuronConnection(lowerLayerNeuron, randomWeight(gen), newNeuron);
                 connections.push_back(connection);
@@ -204,10 +213,11 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
                           unsigned long minibatchSize,
                           double learningRate,
                           unsigned numOfLoops,
-                          double weightDecay) 
+                          double weightDecay,
+                          unsigned sizeOfValidation) 
 {
     // initialize a vector of indexes from 0 to trainingVectors.size()-1
-    std::vector<std::size_t> indexes(trainingVectors.size());
+    std::vector<std::size_t> indexes(trainingVectors.size() - sizeOfValidation);
     std::iota(std::begin(indexes), std::end(indexes), 0);
     // stuff for randomization
     std::random_device rd;
@@ -220,9 +230,9 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
         // shuffle the indexes...
         std::shuffle(indexes.begin(), indexes.end(), g);
         // ... and take first minibatchSize of them for processing
-        for (unsigned long j = 0; j * minibatchSize < trainingVectors.size(); ++j) {
+        for (unsigned long j = 0; j * minibatchSize < trainingVectors.size() - sizeOfValidation; ++j) {
             std::cout << "  Batch " << j << std::endl;
-            for (unsigned long k = 0; k != minibatchSize && (j*minibatchSize + k) != trainingVectors.size(); ++k) {
+            for (unsigned long k = 0; k != minibatchSize && (j*minibatchSize + k) != trainingVectors.size() - sizeOfValidation; ++k) {
                 auto index = indexes[j*minibatchSize + k];
                 setInput(trainingVectors[index]);
                 run();
@@ -235,6 +245,19 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
                 connection->updateWeight(learningRate, ef, weightDecay);
             }
         }
+
+    
+        unsigned right = 0;
+        for (auto i = trainingVectors.size() - sizeOfValidation; i < trainingVectors.size(); ++i) {
+            setInput(trainingVectors[i]);
+            run();
+            auto realOutputVec = getOutputVector();
+            auto realAns = std::distance(trainingOutput[i].begin(),std::max_element(trainingOutput[i].begin(),trainingOutput[i].end()));
+            auto expecAns = std::distance(realOutputVec.begin(),std::max_element(realOutputVec.begin(),realOutputVec.end()));
+            if (realAns == expecAns)
+                ++right;
+        }
+        std::cout << double(right) / double(sizeOfValidation) << std::endl;
     }
 }
 

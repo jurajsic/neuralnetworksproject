@@ -43,7 +43,8 @@ public:
                unsigned long minibatchSize,
                double learningRate,
                unsigned numOfLoops,
-               double weightDecay);
+               double weightDecay,
+               unsigned sizeOfValidation = 0);
     void setInput(const std::vector<double> &inputVector);
     void run();
     std::vector<double> getOutputVector();
