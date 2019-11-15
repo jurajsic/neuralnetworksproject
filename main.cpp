@@ -135,6 +135,8 @@ int main(int argc, char **argv) {
         nn.setInput(v);
         nn.run();
         auto res = nn.getOutputVector();
+        unsigned label = std::distance(res.begin(),std::max_element(res.begin(),res.end()));
+        /*
         unsigned maxindex = 0;
         double max = res[0];
         for (std::size_t i = 1; i != maxLabel; ++i) {
@@ -143,7 +145,8 @@ int main(int argc, char **argv) {
                 maxindex = i;
             }
         }
-        outFile << maxindex << std::endl;
+        */
+        outFile << label << std::endl;
     }
 
  }
