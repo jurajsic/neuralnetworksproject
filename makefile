@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -pedantic -Wall -Wextra
+CXXFLAGS = -std=c++11 -pedantic -Wall -Wextra
 DEBOPT = -o3
 RM = rm -f
 

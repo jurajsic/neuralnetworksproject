@@ -58,7 +58,7 @@ NeuralNetwork::NeuralNetwork(
             // weight generated using results from He (2015) designed for RELU
             //std::normal_distribution randomWeight(0.0, 2.0/double(lowerLayer.size()));
             // weight generated using results from LeCun (1990) designed for SELU
-            std::normal_distribution randomWeight(0.0, 1.0/double(lowerLayer.size()));
+            std::normal_distribution<double> randomWeight(0.0, 1.0/double(lowerLayer.size()));
             for (Neuron *lowerLayerNeuron : lowerLayer) {
                 NeuronConnection *connection = new NeuronConnection(lowerLayerNeuron, randomWeight(gen), newNeuron);
                 connections.push_back(connection);
@@ -81,7 +81,7 @@ NeuralNetwork::NeuralNetwork(
         // connect them with lower layer
         auto &lowerLayer = neurons.back();
         // weight generated using results from Glorot & Bengio (2010)
-        std::normal_distribution randomWeight(0.0, 2.0/double(lowerLayer.size() + numOfOutputNeurons));
+        std::normal_distribution<double> randomWeight(0.0, 2.0/double(lowerLayer.size() + numOfOutputNeurons));
         for (Neuron *lowerLayerNeuron : lowerLayer) {
             NeuronConnection *connection = new NeuronConnection(lowerLayerNeuron, randomWeight(gen), newNeuron);
             connections.push_back(connection);
