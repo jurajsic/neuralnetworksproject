@@ -1,6 +1,7 @@
 #ifndef NEURALNETWORK_HPP
 #define NEURALNETWORK_HPP
 
+#include <random>
 #include "neuron.hpp"
 
 enum activationFunctionType { linear, logsigmoid, softmax };

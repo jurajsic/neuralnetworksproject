@@ -1,5 +1,4 @@
 #include <numeric>
-#include <random>
 #include <iostream>
 #include <algorithm>
 #include <iterator>
@@ -153,33 +152,36 @@ void NeuralNetwork::setInput(const std::vector<double> &inputVector) {
 }
 
 void NeuralNetwork::run() {
-    for (auto &layer : neurons) {
-        for (Neuron *neuron : layer) {
+    // compute inner potentials and outputs normally for input and hidden neurons
+    for (auto layer = neurons.begin(); layer != neurons.end() - 1; ++layer) {
+        for (Neuron *neuron : *layer) {
             neuron->computeInnerPotential();
+            neuron->computeOutput();
         }
     }
 
+    // for output neurons we have to do it on its own, because in case of softmax, 
+    // the activation function depends on every output neuron and it gets a bit funky
+    auto &outputNeurons = neurons.back();
+    double maxInnerPotential = 0.0;
+    for (Neuron *outputNeuron : outputNeurons) {
+        outputNeuron->computeInnerPotential();
+        double innerPotential = outputNeuron->getInnerPotential();
+        maxInnerPotential = (innerPotential > maxInnerPotential) ? innerPotential : maxInnerPotential;
+    }
+
     // this thing is done so we don't have to recalculate exp in softmax activation function of output neurons
+    // and also the denominator in the softmax
     if (outputNeuronsActivationFunType == softmax) {
-        double maxInnerPotential = 0.0;
-        for (Neuron *outputNeuron : neurons.back()) {
-            double innerPotential = outputNeuron->getInnerPotential();
-            maxInnerPotential = (innerPotential > maxInnerPotential) ? innerPotential : maxInnerPotential;                                           
-        }
         denominatorForSoftmax = 0.0;
-        for (Neuron *outputNeuron : neurons.back()) {
+        for (Neuron *outputNeuron : outputNeurons) {
             outputNeuron->computeExpOfInnerPotential(maxInnerPotential);
             denominatorForSoftmax += outputNeuron->getExpOfInnerPotential();
         }
     }
 
-    for (auto &layer : neurons) {
-        for (Neuron *neuron : layer) {
-            //std::cout << "ID: " << *neuron << std::endl;
-            //std::cout << "starting value: " << neuron->getOutput() << std::endl;
-            neuron->computeOutput();
-            //std::cout << neuron->getOutput() << std::endl;
-        }
+    for (Neuron *outputNeuron : outputNeurons) {
+        outputNeuron->computeOutput();
     }
 }
 
@@ -252,7 +254,7 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
             std::cout << "  Batch " << j << std::endl;
 
             // dropout
-            double prob = 0.5;
+            double prob = 1.0;
             setActiveNeurons(prob);
 
             for (unsigned long k = 0; k != minibatchSize && (j*minibatchSize + k) != trainingVectors.size() - sizeOfValidation; ++k) {
