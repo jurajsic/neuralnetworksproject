@@ -234,8 +234,9 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
                           unsigned sizeOfValidation) 
 {
     // initialize a vector of indexes from 0 to trainingVectors.size()-1
-    std::vector<std::size_t> indexes(trainingVectors.size() - sizeOfValidation);
-    std::iota(std::begin(indexes), std::end(indexes), 0);
+    std::vector<std::size_t> indexes(trainingVectors.size());
+    std::iota(indexes.begin(), indexes.end(), 0);
+    std::shuffle(indexes.begin(), indexes.end(), gen);
     
 /*
     // stuff for randomization
@@ -248,10 +249,10 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
         //double error = computeError(trainingVectors, trainingOutput);
         std::cout << "Epoch " << i << std::endl;// " with error " << error << std::endl;
         // shuffle the indexes...
-        std::shuffle(indexes.begin(), indexes.end(), gen);
+        std::shuffle(indexes.begin(), indexes.end() - sizeOfValidation, gen);
         // ... and take first minibatchSize of them for processing
         for (unsigned long j = 0; j * minibatchSize < trainingVectors.size() - sizeOfValidation; ++j) {
-            std::cout << "  Batch " << j << std::endl;
+            //std::cout << "  Batch " << j << std::endl;
 
             // dropout
             double prob = 1.0;
@@ -273,17 +274,22 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
 
         setActiveNeurons(1.0);
     
+        
         unsigned right = 0;
-        for (auto i = trainingVectors.size() - sizeOfValidation; i < trainingVectors.size(); ++i) {
-            setInput(trainingVectors[i]);
+        for (auto i = indexes.end() - sizeOfValidation; i != indexes.end(); ++i) {
+            setInput(trainingVectors[*i]);
             run();
             auto realOutputVec = getOutputVector();
-            auto realAns = std::distance(trainingOutput[i].begin(),std::max_element(trainingOutput[i].begin(),trainingOutput[i].end()));
-            auto expecAns = std::distance(realOutputVec.begin(),std::max_element(realOutputVec.begin(),realOutputVec.end()));
+            auto expecAns = std::distance(trainingOutput[*i].begin(),std::max_element(trainingOutput[*i].begin(),trainingOutput[*i].end()));
+            auto realAns = std::distance(realOutputVec.begin(),std::max_element(realOutputVec.begin(),realOutputVec.end()));
             if (realAns == expecAns)
                 ++right;
         }
-        std::cout << double(right) / double(sizeOfValidation) << std::endl;
+
+        //double validationError = computeError(trainingVectors, trainingOutput, indexes.end() - sizeOfValidation, indexes.end());
+        
+        //std::cout << "Accuracy of validation: " << double(right) / double(sizeOfValidation) << std::endl
+        //          << "Error of validation: " << validationError << std::endl;
     }
 }
 
@@ -295,29 +301,35 @@ void NeuralNetwork::printOutput() {
 }
 
 double NeuralNetwork::computeError(const std::vector<std::vector<double>> &trainingVectors, 
-                                   const std::vector<std::vector<double>> &expectedOutput)
+                                   const std::vector<std::vector<double>> &expectedOutput,
+                                   std::vector<unsigned long>::iterator startIndex,
+                                   std::vector<unsigned long>::iterator endIndex)
 {
     double error = 0;
-    for (std::size_t i = 0; i != trainingVectors.size(); ++i) {
-        double sizeOfSet = trainingVectors.size();
-        setInput(trainingVectors[i]);
+    unsigned sizeOfSet = 0;
+    for (auto indexPtr = startIndex; indexPtr != endIndex; ++indexPtr) {
+        //double sizeOfSet = trainingVectors.size();
+        setInput(trainingVectors[*indexPtr]);
         run();
         auto output = getOutputVector();
-        for (std::size_t j = 0; j != expectedOutput[i].size(); ++j) {
+        for (std::size_t j = 0; j != expectedOutput[*indexPtr].size(); ++j) {
             double realOutput = output[j];
-            double expectOutput = expectedOutput[i][j];
+            double expectOutput = expectedOutput[*indexPtr][j];
             if (ef == meanSquaredError) {
                 double temp = realOutput - expectOutput;
                 error +=  temp * temp / 2.0;
-                error = error / sizeOfSet;
+                //error = error / sizeOfSet;
             } else if (ef == crossEntropyBinary) {
-                error -= (expectOutput*log(realOutput) + (1-expectOutput)*log(1-realOutput)) / sizeOfSet;
+                error -= (expectOutput*std::log(realOutput) + (1-expectOutput)*std::log(1-realOutput));// / sizeOfSet;
+            } else if (ef == crossEntropy) {
+                error -= expectOutput*std::log(realOutput);
             } else {
                 throw "not implemented";
             }
         }
+        ++sizeOfSet;
     }
-    return error;
+    return error/double(sizeOfSet);
 }
 
 void NeuralNetwork::printConnections() {

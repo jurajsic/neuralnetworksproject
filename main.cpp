@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
     double learnRate = std::stod(argv[argc-3]);
     NeuralNetwork nn(sizeOfLayers, softmax, crossEntropy);
     //NeuralNetwork nn(sizeOfLayers, linear, std::pair<double,double>(-1,1), meanSquaredError);
-    nn.train(vectors, outputs, 32, learnRate, std::stoul(argv[argc-2]), 0.00005, 1000);
+    nn.train(vectors, outputs, 32, learnRate, std::stoul(argv[argc-2]), 0.00005, 0);
 
     auto t_end = std::chrono::high_resolution_clock::now();
 

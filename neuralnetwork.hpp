@@ -53,7 +53,9 @@ public:
     void run();
     std::vector<double> getOutputVector();
     double computeError(const std::vector<std::vector<double>> &trainingVectors, 
-                        const std::vector<std::vector<double>> &expectedOutput);
+                        const std::vector<std::vector<double>> &expectedOutput,
+                        std::vector<unsigned long>::iterator startIndex,
+                        std::vector<unsigned long>::iterator endIndex);
     void printOutput();
     void printConnections();
 };
