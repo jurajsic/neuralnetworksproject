@@ -82,16 +82,29 @@ std::vector<unsigned> readLabelFile(std::string fileName) {
     return labels;
 }
 
+void runNetworkAndWriteOutput(std::vector<std::vector<double>> &inputVectors, std::string outFileName, NeuralNetwork &nn) {
+    std::ofstream outFile(outFileName);
+    for (auto &v : inputVectors) {
+        nn.setInput(v);
+        nn.run();
+        auto res = nn.getOutputVector();
+        unsigned label = std::distance(res.begin(),std::max_element(res.begin(),res.end()));
+        outFile << label << std::endl;
+    }
+}
+
 int main(int argc, char **argv) {
 
-    if (argc < 5)
+    auto t_start = std::chrono::high_resolution_clock::now();
+
+    if (argc < 6)
     {
         xorNN();
         return 0;
     }
 
-    auto vectors = readVectorFile("data/MNIST_DATA/mnist_train_vectors.csv");
-    auto labels = readLabelFile("data/MNIST_DATA/mnist_train_labels.csv");
+    auto vectors = readVectorFile("../data/mnist_train_vectors.csv");
+    auto labels = readLabelFile("../data/mnist_train_labels.csv");
 
     std::cout << "Processing files" << std::endl;
 
@@ -111,42 +124,26 @@ int main(int argc, char **argv) {
 
     std::vector<unsigned long> sizeOfLayers;
     sizeOfLayers.push_back(vectors[0].size());
-    for (int i = 1; i < argc-3; ++i)
+    for (int i = 1; i < argc-4; ++i)
         sizeOfLayers.push_back(std::stoul(argv[1]));
     sizeOfLayers.push_back(maxLabel + 1);
 
     std::cout << "Creating neural network" << std::endl;
-  
-    auto t_start = std::chrono::high_resolution_clock::now();
 
     double learnRate = std::stod(argv[argc-3]);
     NeuralNetwork nn(sizeOfLayers, softmax, crossEntropy);
     //NeuralNetwork nn(sizeOfLayers, linear, std::pair<double,double>(-1,1), meanSquaredError);
     nn.train(vectors, outputs, 32, learnRate, std::stoul(argv[argc-2]), 0.00005, 0);
 
+    // run neural network on training data
+    runNetworkAndWriteOutput(vectors, argv[argc-2], nn);
+
+    // run neural network on test data
+    vectors = readVectorFile("../data/mnist_test_vectors.csv");
+    runNetworkAndWriteOutput(vectors, argv[argc-1], nn);
+
     auto t_end = std::chrono::high_resolution_clock::now();
 
     double elapsed_time_m = std::chrono::duration<double, std::ratio<60>>(t_end-t_start).count();
-    std::cout << "Time taken to train: " << elapsed_time_m << " minutes" << std::endl;
- 
-    vectors = readVectorFile("data/MNIST_DATA/mnist_test_vectors.csv");
-    std::ofstream outFile(argv[argc-1]);
-    for (auto &v : vectors) {
-        nn.setInput(v);
-        nn.run();
-        auto res = nn.getOutputVector();
-        unsigned label = std::distance(res.begin(),std::max_element(res.begin(),res.end()));
-        /*
-        unsigned maxindex = 0;
-        double max = res[0];
-        for (std::size_t i = 1; i != maxLabel; ++i) {
-            if (res[i] > max) {
-                max = res[i];
-                maxindex = i;
-            }
-        }
-        */
-        outFile << label << std::endl;
-    }
-
+    std::cout << "Time taken for the whole tango: " << elapsed_time_m << " minutes" << std::endl;
  }
