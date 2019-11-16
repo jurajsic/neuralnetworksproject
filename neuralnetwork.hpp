@@ -27,9 +27,12 @@ private:
     double denominatorForSoftmax;
     void computeDenominatorForSoftmax();
 
+    std::random_device rd;  //Will be used to obtain a seed for the random number engine
+    std::default_random_engine gen;
     
     void backpropagate(const std::vector<double> &expectedOutput);
     void computeWeightUpdates();
+    void setActiveNeurons(double prob);
 public:
     NeuralNetwork() = delete;
     NeuralNetwork(std::vector<unsigned long> sizeOfLayers, 

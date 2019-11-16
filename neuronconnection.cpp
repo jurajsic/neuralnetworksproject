@@ -23,6 +23,8 @@ Neuron* NeuronConnection::getOutputNeuron() {
 }
 
 void NeuronConnection::computeErrorFunWeightDerAndSave() {
+    if (!inputNeuron->isActive || !outputNeuron->isActive)
+        return;
     weightUpdate += outputNeuron->errorFunctionOutputDerivation
                         * outputNeuron->activationFunctionDerivation(outputNeuron->innerPotential)
                         * inputNeuron->getOutput();
@@ -30,6 +32,9 @@ void NeuronConnection::computeErrorFunWeightDerAndSave() {
 }
 
 void NeuronConnection::updateWeight(double learningRate, ErrorFunction ef, double weightDecay) {
+    if (!inputNeuron->isActive || !outputNeuron->isActive)
+        return;
+
     if (ef == meanSquaredError) {
         weightUpdate = weightUpdate/weightUpdateCounter;
     } else if (ef == crossEntropyBinary || ef == crossEntropy) {

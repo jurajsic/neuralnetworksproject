@@ -10,7 +10,8 @@ NeuralNetwork::NeuralNetwork(
                   activationFunctionType outputNeuronsActFunType, 
                   //std::pair<double,double> weightRange,
                   ErrorFunction ef
-                  ) : input(sizeOfLayers[0]), ef(ef), outputNeuronsActivationFunType(outputNeuronsActFunType)
+                  ) : input(sizeOfLayers[0]), ef(ef), outputNeuronsActivationFunType(outputNeuronsActFunType),
+                      rd(), gen(rd())
 {
     //neurons.reserve(sizeOfLayers.size());
 
@@ -40,10 +41,12 @@ NeuralNetwork::NeuralNetwork(
     std::function<double(double)> hiddenActivationFunctionDerivation = [](double x) -> double { return (x < 0.0) ? (1.05*1.673*std::exp(x)) : 1.05; };
 
 
+/*
     // randomizer for weights
     std::random_device rd;  //Will be used to obtain a seed for the random number engine
     std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
     //std::uniform_real_distribution<> randomWeight(weightRange.first, weightRange.second);
+*/
 
     // create hidden neurons and connect them with lower layer
     for (std::size_t i = 1; i != sizeOfLayers.size() - 1; ++i) {
@@ -154,21 +157,23 @@ void NeuralNetwork::run() {
         for (Neuron *neuron : layer) {
             neuron->computeInnerPotential();
         }
+    }
 
-        // this thing is done so we don't have to recalculate exp in softmax activation function of output neurons
-        if (outputNeuronsActivationFunType == softmax) {
-            double maxInnerPotential = 0.0;
-            for (Neuron *outputNeuron : neurons.back()) {
-                double innerPotential = outputNeuron->getInnerPotential();
-                maxInnerPotential = (innerPotential > maxInnerPotential) ? innerPotential : maxInnerPotential;                                           
-            }
-            denominatorForSoftmax = 0.0;
-            for (Neuron *outputNeuron : neurons.back()) {
-                outputNeuron->computeExpOfInnerPotential(maxInnerPotential);
-                denominatorForSoftmax += outputNeuron->getExpOfInnerPotential();
-            }
+    // this thing is done so we don't have to recalculate exp in softmax activation function of output neurons
+    if (outputNeuronsActivationFunType == softmax) {
+        double maxInnerPotential = 0.0;
+        for (Neuron *outputNeuron : neurons.back()) {
+            double innerPotential = outputNeuron->getInnerPotential();
+            maxInnerPotential = (innerPotential > maxInnerPotential) ? innerPotential : maxInnerPotential;                                           
         }
+        denominatorForSoftmax = 0.0;
+        for (Neuron *outputNeuron : neurons.back()) {
+            outputNeuron->computeExpOfInnerPotential(maxInnerPotential);
+            denominatorForSoftmax += outputNeuron->getExpOfInnerPotential();
+        }
+    }
 
+    for (auto &layer : neurons) {
         for (Neuron *neuron : layer) {
             //std::cout << "ID: " << *neuron << std::endl;
             //std::cout << "starting value: " << neuron->getOutput() << std::endl;
@@ -189,7 +194,7 @@ std::vector<double> NeuralNetwork::getOutputVector() {
 
 void NeuralNetwork::backpropagate(const std::vector<double> &expectedOutput) {
     // initialize derivatives for output layer
-    auto outputLayer = neurons.back();
+    auto &outputLayer = neurons.back();
     for (std::size_t i = 0; i != expectedOutput.size(); ++i) {
         outputLayer[i]->computeErrorFunctionOutputDerivation(expectedOutput[i], ef);
     }
@@ -208,6 +213,16 @@ void NeuralNetwork::computeWeightUpdates() {
     }
 }
 
+void NeuralNetwork::setActiveNeurons(double prob) {
+    std::bernoulli_distribution bd(prob);
+    // only for hidden layers
+    for (auto layer = neurons.begin() + 1; layer != (neurons.end() - 1); ++layer) {
+        for (Neuron *hiddenNeuron : *layer) {
+            hiddenNeuron->setIsActive(bd(gen));
+        }
+    }
+}
+
 void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVectors, 
                           const std::vector<std::vector<double>> &trainingOutput,
                           unsigned long minibatchSize,
@@ -219,19 +234,27 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
     // initialize a vector of indexes from 0 to trainingVectors.size()-1
     std::vector<std::size_t> indexes(trainingVectors.size() - sizeOfValidation);
     std::iota(std::begin(indexes), std::end(indexes), 0);
+    
+/*
     // stuff for randomization
     std::random_device rd;
     std::mt19937 g(rd());
+*/
 
     // TODO add this whole thing in while block where we decide how long to do this shit
     for(unsigned i=0; i != numOfLoops; ++i) {
         //double error = computeError(trainingVectors, trainingOutput);
         std::cout << "Epoch " << i << std::endl;// " with error " << error << std::endl;
         // shuffle the indexes...
-        std::shuffle(indexes.begin(), indexes.end(), g);
+        std::shuffle(indexes.begin(), indexes.end(), gen);
         // ... and take first minibatchSize of them for processing
         for (unsigned long j = 0; j * minibatchSize < trainingVectors.size() - sizeOfValidation; ++j) {
             std::cout << "  Batch " << j << std::endl;
+
+            // dropout
+            double prob = 0.5;
+            setActiveNeurons(prob);
+
             for (unsigned long k = 0; k != minibatchSize && (j*minibatchSize + k) != trainingVectors.size() - sizeOfValidation; ++k) {
                 auto index = indexes[j*minibatchSize + k];
                 setInput(trainingVectors[index]);
@@ -246,6 +269,7 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
             }
         }
 
+        setActiveNeurons(1.0);
     
         unsigned right = 0;
         for (auto i = trainingVectors.size() - sizeOfValidation; i < trainingVectors.size(); ++i) {

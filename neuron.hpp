@@ -48,6 +48,8 @@ private:
     std::function<double(double)> activationFunction;
     std::function<double(double)> activationFunctionDerivation;
 
+    bool isActive = true;
+
     /** backpropagation stuff **/
     double errorFunctionOutputDerivation = 0.0;
     
@@ -75,6 +77,8 @@ public:
     
     void setActivationFunction(const std::function<double(double)> &activationFunction);
     void setActivationFunctionDerivation(const std::function<double(double)> &activationFunctionDerivation);
+
+    void setIsActive(bool isActive);
 
     // for backpropagation
     void computeErrorFunctionOutputDerivation(double expectedOutput = 0, ErrorFunction ef = meanSquaredError);

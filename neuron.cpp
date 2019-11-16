@@ -31,9 +31,14 @@ double Neuron::getOutput() {
 }
 
 void Neuron::computeInnerPotential() {
+    if (!isActive)
+        return;
+
     innerPotential = 0;
     for (NeuronConnection *inputConnection : inputConnections) {
-        innerPotential += inputConnection->getWeight() * inputConnection->getInputNeuron()->getOutput();
+        Neuron *inputNeuron = inputConnection->getInputNeuron();
+        if (inputNeuron->isActive)
+            innerPotential += inputConnection->getWeight() * inputNeuron->getOutput();
     }
 }
 
@@ -42,6 +47,9 @@ double Neuron::getInnerPotential() {
 }
 
 void Neuron::computeOutput() {
+    if (!isActive)
+        return;
+
     // this is true only if we have softmax
     if (expOfInnerPotential != -1.0) {
         output = activationFunction(expOfInnerPotential);
@@ -58,7 +66,14 @@ void Neuron::setActivationFunctionDerivation(const std::function<double(double)>
     this->activationFunctionDerivation = activationFunctionDerivation;
 }
 
+void Neuron::setIsActive(bool isActive) {
+    this->isActive = isActive;
+}
+
 void Neuron::computeErrorFunctionOutputDerivation(double expectedOutput, ErrorFunction ef) {
+    if (!isActive)
+        return;
+    
     if (outputConnections.size() == 0) {
         if (ef == meanSquaredError) {
             errorFunctionOutputDerivation = output - expectedOutput;
@@ -75,6 +90,8 @@ void Neuron::computeErrorFunctionOutputDerivation(double expectedOutput, ErrorFu
         errorFunctionOutputDerivation = 0;
         for (NeuronConnection *outputConnection : outputConnections) {
             Neuron *outputN = outputConnection->getOutputNeuron();
+            if (!outputN->isActive)
+                continue;
             double errorFunDer = outputN->errorFunctionOutputDerivation;
             double activFunDer = outputN->activationFunctionDerivation(outputN->innerPotential);
             errorFunctionOutputDerivation += errorFunDer * activFunDer * outputConnection->getWeight();
