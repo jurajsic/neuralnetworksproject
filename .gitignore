@@ -2,6 +2,8 @@ nn
 .vscode/*
 data/*
 labels/*
+actualTestPredictions
+trainPredictions
 
 # Prerequisites
 *.d

@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 make -C src
-./src/nn 50 0.001 5 ../trainPredictions ../actualTestPredictions
+./src/nn 50 0.001 5 trainPredictions actualTestPredictions

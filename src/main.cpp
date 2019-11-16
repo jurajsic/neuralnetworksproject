@@ -103,8 +103,8 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    auto vectors = readVectorFile("../data/mnist_train_vectors.csv");
-    auto labels = readLabelFile("../data/mnist_train_labels.csv");
+    auto vectors = readVectorFile("data/mnist_train_vectors.csv");
+    auto labels = readLabelFile("data/mnist_train_labels.csv");
 
     std::cout << "Processing files" << std::endl;
 
@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
     runNetworkAndWriteOutput(vectors, argv[argc-2], nn);
 
     // run neural network on test data
-    vectors = readVectorFile("../data/mnist_test_vectors.csv");
+    vectors = readVectorFile("data/mnist_test_vectors.csv");
     runNetworkAndWriteOutput(vectors, argv[argc-1], nn);
 
     auto t_end = std::chrono::high_resolution_clock::now();
