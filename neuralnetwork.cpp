@@ -7,22 +7,18 @@
 NeuralNetwork::NeuralNetwork( 
                   std::vector<unsigned long> sizeOfLayers,
                   activationFunctionType outputNeuronsActFunType, 
-                  //std::pair<double,double> weightRange,
                   ErrorFunction ef
                   ) : input(sizeOfLayers[0]), ef(ef), outputNeuronsActivationFunType(outputNeuronsActFunType),
                       rd(), gen(rd())
 {
-    //neurons.reserve(sizeOfLayers.size());
 
     // create formal neuron for bias
     auto oneFunction = [](double) -> double { return 1; };
     formalNeuron = new Neuron(oneFunction,oneFunction,"formalNeuron");
     formalNeuron->computeOutput();
-    //inputLayerNeurons.push_back(formalNeuron);
     
     // create input neurons
     std::vector<Neuron*> inputLayerNeurons;
-    //inputLayerNeurons.reserve(sizeOfLayers[0]);
     for (unsigned long i = 0; i != sizeOfLayers[0]; ++i) {
         auto inputActivationFun = [&, i](double) -> double { return input[i]; };
         Neuron *inputNeuron = new Neuron(inputActivationFun, oneFunction, "inputNeuron" + std::to_string(i));
@@ -35,17 +31,11 @@ NeuralNetwork::NeuralNetwork(
     std::function<double(double)> hiddenActivationFunction = [](double x) -> double { return (x < 0) ? 0.0 : x; };
     std::function<double(double)> hiddenActivationFunctionDerivation = [](double x) -> double { return (x < 0) ? 0.0 : 1.0; };
 */
+
     // hidden neurons have SELU as activation function
     std::function<double(double)> hiddenActivationFunction = [](double x) -> double { return (x < 0.0) ? (1.05*1.673*(std::exp(x)-1)) : 1.05*x; };
     std::function<double(double)> hiddenActivationFunctionDerivation = [](double x) -> double { return (x < 0.0) ? (1.05*1.673*std::exp(x)) : 1.05; };
 
-
-/*
-    // randomizer for weights
-    std::random_device rd;  //Will be used to obtain a seed for the random number engine
-    std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
-    //std::uniform_real_distribution<> randomWeight(weightRange.first, weightRange.second);
-*/
 
     // create hidden neurons and connect them with lower layer
     for (std::size_t i = 1; i != sizeOfLayers.size() - 1; ++i) {
@@ -57,10 +47,13 @@ NeuralNetwork::NeuralNetwork(
 
             // create connections to the lower layer of neurons
             auto &lowerLayer = neurons.back();
+
             // weight generated using results from He (2015) designed for RELU
             //std::normal_distribution randomWeight(0.0, 2.0/double(lowerLayer.size()));
+
             // weight generated using results from LeCun (1990) designed for SELU
             std::normal_distribution<double> randomWeight(0.0, 1.0/double(lowerLayer.size()));
+
             for (Neuron *lowerLayerNeuron : lowerLayer) {
                 NeuronConnection *connection = new NeuronConnection(lowerLayerNeuron, randomWeight(gen), newNeuron);
                 connections.push_back(connection);
@@ -82,8 +75,11 @@ NeuralNetwork::NeuralNetwork(
 
         // connect them with lower layer
         auto &lowerLayer = neurons.back();
+
         // weight generated using results from Glorot & Bengio (2010)
         std::normal_distribution<double> randomWeight(0.0, 2.0/double(lowerLayer.size() + numOfOutputNeurons));
+
+
         for (Neuron *lowerLayerNeuron : lowerLayer) {
             NeuronConnection *connection = new NeuronConnection(lowerLayerNeuron, randomWeight(gen), newNeuron);
             connections.push_back(connection);
@@ -118,8 +114,6 @@ NeuralNetwork::NeuralNetwork(
             // function is easier
             outputActivationFunctionDerivation = [=](double) -> double
                                         {
-                                            //double softmaxOrig = outputActivationFunction(x);
-                                            //return softmaxOrig * (1 - softmaxOrig);
                                             return 1;
                                         };
             break;
@@ -229,31 +223,23 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
                           const std::vector<std::vector<double>> &trainingOutput,
                           unsigned long minibatchSize,
                           double learningRate,
-                          unsigned numOfLoops,
+                          unsigned numOfEpochs,
                           double weightDecay,
                           unsigned sizeOfValidation) 
 {
-    // initialize a vector of indexes from 0 to trainingVectors.size()-1
+    // initialize a vector of indexes
     std::vector<std::size_t> indexes(trainingVectors.size());
     std::iota(indexes.begin(), indexes.end(), 0);
     std::shuffle(indexes.begin(), indexes.end(), gen);
     
-/*
-    // stuff for randomization
-    std::random_device rd;
-    std::mt19937 g(rd());
-*/
 
-    // TODO add this whole thing in while block where we decide how long to do this shit
-    for(unsigned i=0; i != numOfLoops; ++i) {
+    for(unsigned i=0; i != numOfEpochs; ++i) {
         //double error = computeError(trainingVectors, trainingOutput);
         std::cout << "Epoch " << i << std::endl;// " with error " << error << std::endl;
         // shuffle the indexes...
         std::shuffle(indexes.begin(), indexes.end() - sizeOfValidation, gen);
         // ... and take first minibatchSize of them for processing
         for (unsigned long j = 0; j * minibatchSize < trainingVectors.size() - sizeOfValidation; ++j) {
-            //std::cout << "  Batch " << j << std::endl;
-
             // dropout
             double prob = 1.0;
             setActiveNeurons(prob);
@@ -262,7 +248,6 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
                 auto index = indexes[j*minibatchSize + k];
                 setInput(trainingVectors[index]);
                 run();
-                //printOutput();
                 backpropagate(trainingOutput[index]);
                 computeWeightUpdates();
             }
@@ -274,7 +259,9 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
 
         setActiveNeurons(1.0);
     
-        
+        if (sizeOfValidation == 0)
+            continue;
+
         unsigned right = 0;
         for (auto i = indexes.end() - sizeOfValidation; i != indexes.end(); ++i) {
             setInput(trainingVectors[*i]);
@@ -286,10 +273,10 @@ void NeuralNetwork::train(const std::vector<std::vector<double>> &trainingVector
                 ++right;
         }
 
-        //double validationError = computeError(trainingVectors, trainingOutput, indexes.end() - sizeOfValidation, indexes.end());
+        double validationError = computeError(trainingVectors, trainingOutput, indexes.end() - sizeOfValidation, indexes.end());
         
-        //std::cout << "Accuracy of validation: " << double(right) / double(sizeOfValidation) << std::endl
-        //          << "Error of validation: " << validationError << std::endl;
+        std::cout << "Accuracy of validation: " << double(right) / double(sizeOfValidation) << std::endl
+                  << "Error of validation: " << validationError << std::endl;
     }
 }
 

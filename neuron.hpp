@@ -17,6 +17,7 @@ private:
     double weightUpdate = 0.0;
     unsigned weightUpdateCounter = 0.0;
 
+    // learning rate adaptation used in RMSdrop
     double learningRateAdaptation = 1.0;
     
     friend std::ostream& operator<<(std::ostream&, NeuronConnection const&);
@@ -35,7 +36,7 @@ class Neuron {
 private:
     friend class NeuronConnection;
 
-    // id of neuron used for debuging
+    // id of neuron used for debugging
     std::string id;
     friend std::ostream& operator<<(std::ostream&, Neuron const&);
 
@@ -48,9 +49,10 @@ private:
     std::function<double(double)> activationFunction;
     std::function<double(double)> activationFunctionDerivation;
 
+    // used in dropout
     bool isActive = true;
 
-    /** backpropagation stuff **/
+    // for backpropagation
     double errorFunctionOutputDerivation = 0.0;
     
     // this is only used if activation function is softmax, so we do not recompute exp multiple times
@@ -58,15 +60,16 @@ private:
     // where maxOutputLayerInnerPotential is maximal inner potential of neuron in output layer
     // so we do not have problems with too large numbers
     double expOfInnerPotential = -1.0;
+    
+    // these two are only called from NeuronConnection
+    void addInputConnection(NeuronConnection *inputConnection);
+    void addOuptutConnection(NeuronConnection *outputConnection);
 
 public:
     Neuron(std::string id);
     Neuron(const std::function<double(double)> &activationFunction, 
            const std::function<double(double)> &activationFunctionDerivation,
            std::string id);
-
-    void addInputConnection(NeuronConnection *inputConnection);
-    void addOuptutConnection(NeuronConnection *outputConnection);
     
     void computeInnerPotential();
     double getInnerPotential();
@@ -83,6 +86,7 @@ public:
     // for backpropagation
     void computeErrorFunctionOutputDerivation(double expectedOutput = 0, ErrorFunction ef = meanSquaredError);
 
+    // used if activation function is softmax (computes exp(innnerPotential))
     void computeExpOfInnerPotential(double maxOutputLayerInnerPotential);
     double getExpOfInnerPotential();
 };
